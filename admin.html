@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Library SheetJS untuk baca & tulis file Excel (.xlsx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Library Quill.js untuk Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        /* Animasi Transisi */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Styling Tab yang lebih hidup */
+        .tab-btn { position: relative; transition: all 0.3s ease; }
+        .tab-btn.active { color: #4f46e5; font-weight: 700; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 3px;
+            background-color: #4f46e5; border-radius: 3px 3px 0 0;
+        }
+
+        /* Merapikan border Editor Quill agar serasi dengan Tailwind (Desain Keren) */
+        .ql-toolbar.ql-snow { 
+            border-radius: 0.75rem 0.75rem 0 0; border-color: #d1d5db; 
+            background-color: #f8fafc; font-family: inherit; border-bottom: none;
+        }
+        .ql-container.ql-snow { 
+            border-radius: 0 0 0.75rem 0.75rem; border-color: #d1d5db; 
+            font-family: inherit; font-size: 1rem; background-color: white;
+        }
+        .ql-editor { min-height: 250px; padding: 1.5rem; }
+        .ql-editor:focus { outline: none; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div id="login-section" class="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 p-4">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center transform transition-all fade-in">
+            
+            <div id="login-logo-container" class="bg-indigo-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner overflow-hidden transition-all duration-300">
+                <svg id="login-logo-svg" class="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <img id="login-logo-img" src="" alt="Logo Toko" class="hidden w-full h-full object-contain p-2">
+            </div>
+            
+            <h2 id="login-title" class="text-3xl font-extrabold text-gray-900 mb-2">Panel Admin</h2>
+            <p class="text-gray-500 mb-8 font-medium">Masukkan PIN rahasia Anda</p>
+            
+            <input type="password" id="pin-input" placeholder="••••••••" class="w-full text-center tracking-[0.5em] px-4 py-4 rounded-xl border-2 border-gray-200 focus:ring-0 focus:border-indigo-500 outline-none mb-6 text-xl font-bold text-gray-800 transition-colors">
+            
+            <button onclick="checkLogin()" id="btn-login" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 active:transform active:scale-95 transition-all shadow-lg shadow-indigo-200 text-lg">
+                Masuk Dashboard
+            </button>
+        </div>
+    </div>
+
+    <div id="dashboard-section" class="hidden">
+        
+        <header class="bg-indigo-600 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white sticky top-0 z-40 shadow-lg">
+            <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <h1 class="text-2xl font-bold tracking-tight">Dashboard Admin</h1>
+                </div>
+                <button onclick="logout()" class="text-sm font-bold bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-2.5 rounded-xl transition-all backdrop-blur-sm">
+                    Keluar
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto px-6 py-8">
+            <div class="flex border-b border-gray-300 mb-8 overflow-x-auto no-scrollbar">
+                <button class="tab-btn active px-6 py-4 text-gray-500 hover:text-indigo-600 whitespace-nowrap font-medium text-lg flex items-center gap-2" onclick="switchTab('tab-pengaturan')">
+                    <span>⚙️</span> Pengaturan Web
+                </button>
+                <button class="tab-btn px-6 py-4 text-gray-500 hover:text-indigo-600 whitespace-nowrap font-medium text-lg flex items-center gap-2" onclick="switchTab('tab-produk')">
+                    <span>📦</span> Tambah Produk
+                </button>
+                <button class="tab-btn px-6 py-4 text-gray-500 hover:text-indigo-600 whitespace-nowrap font-medium text-lg flex items-center gap-2" onclick="switchTab('tab-artikel')">
+                    <span>📝</span> Tulis Artikel
+                </button>
+                <button class="tab-btn px-6 py-4 text-gray-500 hover:text-indigo-600 whitespace-nowrap font-medium text-lg flex items-center gap-2" onclick="switchTab('tab-import')">
+                    <span>📊</span> Excel (Import/Export)
+                </button>
+            </div>
+
+            <div id="tab-pengaturan" class="tab-content block fade-in">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                    <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl mb-6 flex items-start gap-3">
+                        <span class="text-xl">💡</span>
+                        <p class="text-sm">Merubah pengaturan di sini akan mereset memori Cache di Google Sheets Anda. Pengunjung akan langsung melihat perubahannya.</p>
+                    </div>
+                    
+                    <form id="form-pengaturan" onsubmit="event.preventDefault(); submitData('settings');">
+                        
+                        <!-- BAGIAN HEADER & UMUM -->
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Pengaturan Header & Umum</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Nama Toko / Brand</label>
+                                <input type="text" id="set-namaToko" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                                <p class="text-xs text-gray-500 mt-1">💡 Dukung HTML. Cth Gradient: &lt;span style="background: linear-gradient(to right, #f00, #00f); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"&gt;NamaToko&lt;/span&gt;</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Warna Utama (Bisa 2 Warna = Gradient)</label>
+                                <div class="flex gap-2">
+                                    <input type="color" id="set-warnaColor1" class="h-12 w-12 rounded cursor-pointer border border-gray-300 flex-shrink-0" title="Warna 1">
+                                    <input type="color" id="set-warnaColor2" class="h-12 w-12 rounded cursor-pointer border border-gray-300 flex-shrink-0" title="Warna 2 (Opsional)">
+                                    <input type="text" id="set-warnaUtama" required placeholder="#4F46E5, #EC4899" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">URL Gambar Logo</label>
+                                <input type="url" id="set-logoUrl" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Warna Background (Bisa 2 Warna = Gradient)</label>
+                                <div class="flex gap-2">
+                                    <input type="color" id="set-bgWarnaColor1" class="h-12 w-12 rounded cursor-pointer border border-gray-300 flex-shrink-0" title="Warna Background 1">
+                                    <input type="color" id="set-bgWarnaColor2" class="h-12 w-12 rounded cursor-pointer border border-gray-300 flex-shrink-0" title="Warna Background 2 (Opsional)">
+                                    <input type="text" id="set-warnaBackground" required placeholder="#F9FAFB" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Font Utama (Google Fonts)</label>
+                                <select id="set-fontFamily" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                                    <option value="Inter">Inter (Modern & Clean)</option>
+                                    <option value="Poppins">Poppins (Bulat & Elegan)</option>
+                                    <option value="Montserrat">Montserrat (Tegas & Profesional)</option>
+                                    <option value="Playfair Display">Playfair Display (Klasik & Mewah)</option>
+                                    <option value="Plus Jakarta Sans">Plus Jakarta Sans (Kekinian)</option>
+                                    <option value="Roboto">Roboto (Simpel & Cepat)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Ukuran Font Judul Hero (Angka pixel, Cth: 48)</label>
+                                <input type="number" id="set-heroFontSize" placeholder="Biarkan kosong untuk ukuran bawaan" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Teks Judul Besar (Hero Homepage)</label>
+                                <textarea id="set-heroTitle" rows="2" placeholder="Ketik judul besar di sini..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors"></textarea>
+                                <p class="text-xs text-gray-500 mt-1">💡 Dukung HTML. Cth Gradient: &lt;span style="background: linear-gradient(to right, #4F46E5, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"&gt;Judul&lt;/span&gt;</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Sub-Judul / Deskripsi Singkat Hero</label>
+                                <textarea id="set-heroSubtitle" rows="2" placeholder="Deskripsi di bawah judul besar..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Background Gambar Hero (Opsional)</label>
+                                <input type="url" id="set-heroBgImage" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                                <p class="text-xs text-gray-500 mt-1">Kosongkan jika hanya ingin warna solid/gradient.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Efek Gelap di Gambar Hero?</label>
+                                <select id="set-heroBgEffect" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                                    <option value="Ya">Ya, gunakan overlay gelap/blur (Cocok untuk foto asli)</option>
+                                    <option value="Tidak">Tidak, biarkan terang (Cocok untuk gambar vector/desain)</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Pilih "Tidak" agar gambar buatanmu tidak kusam.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                             <!-- Pindah waNumber ke bawah -->
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Nomor WhatsApp Admin</label>
+                                <input type="number" id="set-waNumber" placeholder="628123..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                        </div>
+
+                        <!-- STREAMING_CHUNK:Add button text config to form -->
+                        <!-- BAGIAN TOMBOL PRODUK -->
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Pengaturan Teks Tombol Produk</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Teks Tombol Checkout (Utama)</label>
+                                <input type="text" id="set-btnCheckoutText" placeholder="⚡ Checkout Kilat" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Teks Tombol Sales Page (Sekunder)</label>
+                                <input type="text" id="set-btnSalesText" placeholder="📖 Lihat Sales Page" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors text-sm">
+                            </div>
+                        </div>
+
+                        <!-- BAGIAN BANNER PROMO -->
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Pengaturan Banner Promo</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Gambar Banner Atas (Tengah Web)</label>
+                                <input type="url" id="set-bannerImage" placeholder="URL Gambar Banner Atas..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Link Tujuan Banner Atas</label>
+                                <input type="url" id="set-bannerUrl" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Gambar Banner Bawah (Sebelum Footer)</label>
+                                <input type="url" id="set-bottomBannerImage" placeholder="URL Gambar Banner Bawah..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Link Tujuan Banner Bawah</label>
+                                <input type="url" id="set-bottomBannerUrl" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                        </div>
+
+                        <!-- BAGIAN FOOTER & LINK -->
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Pengaturan Footer & Link Tambahan</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Warna Footer</label>
+                                <div class="flex gap-2">
+                                    <input type="color" id="set-footerWarnaColor1" class="h-12 w-12 rounded cursor-pointer border border-gray-300 flex-shrink-0" title="Warna Footer 1">
+                                    <input type="color" id="set-footerWarnaColor2" class="h-12 w-12 rounded cursor-pointer border border-gray-300 flex-shrink-0" title="Warna Footer 2 (Opsional)">
+                                    <input type="text" id="set-warnaFooter" placeholder="#111827" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors text-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Deskripsi Footer</label>
+                                <textarea id="set-footerDeskripsi" rows="2" placeholder="Menyediakan berbagai macam tools digital..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Social Media -->
+                        <h4 class="text-sm font-bold text-gray-700 mb-2">Link Sosial Media (Dinamis)</h4>
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+                            <div id="sosmed-list-container" class="space-y-3 mb-4">
+                                <!-- List sosmed di-inject JS -->
+                            </div>
+                            <div class="flex flex-col md:flex-row gap-2">
+                                <select id="sosmed-platform" class="w-full md:w-1/3 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white">
+                                    <option value="Facebook">Facebook</option>
+                                    <option value="Instagram">Instagram</option>
+                                    <option value="TikTok">TikTok</option>
+                                    <option value="YouTube">YouTube</option>
+                                    <option value="X (Twitter)">X (Twitter)</option>
+                                    <option value="Threads">Threads</option>
+                                    <option value="LinkedIn">LinkedIn</option>
+                                    <option value="Telegram">Telegram</option>
+                                    <option value="Website">Website</option>
+                                </select>
+                                <input type="url" id="sosmed-url" placeholder="https://..." class="w-full md:w-auto flex-grow px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white">
+                                <button type="button" onclick="addSosmed()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md whitespace-nowrap text-sm">
+                                    + Tambah
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Link Legal -->
+                        <h4 class="text-sm font-bold text-gray-700 mb-2">Halaman Legal (URL)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <input type="url" id="set-linkSyarat" placeholder="URL Syarat & Ketentuan" class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white text-sm">
+                            <input type="url" id="set-linkPrivasi" placeholder="URL Kebijakan Privasi" class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white text-sm">
+                            <input type="url" id="set-linkDisclaimer" placeholder="URL Disclaimer Affiliate" class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 focus:bg-white text-sm">
+                        </div>
+
+                        <button type="submit" id="btn-submit-settings" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-lg flex justify-center items-center gap-2 text-lg">
+                            <span>💾</span> Simpan & Terapkan Semua Pengaturan
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="tab-produk" class="tab-content hidden fade-in">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                    <h2 class="text-2xl font-bold mb-8 text-gray-900 flex items-center gap-3" id="title-form-produk">
+                        <div class="bg-indigo-100 p-2 rounded-lg text-indigo-600">➕</div> Upload Produk Baru
+                    </h2>
+                    <form id="form-produk" onsubmit="event.preventDefault(); submitData('produk');">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Nama Produk</label>
+                                <input type="text" id="p-judul" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Kategori</label>
+                                <input type="text" id="p-kategori" placeholder="Contoh: Ebook, Template..." required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">URL Gambar (Thumbnail)</label>
+                            <input type="url" id="p-gambar" required placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Deskripsi Singkat</label>
+                            <textarea id="p-deskripsi" required rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Harga (Rp)</label>
+                                <input type="text" id="p-harga" required placeholder="Rp 150.000" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Status Promo?</label>
+                                <select id="p-promo" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                                    <option value="">Tidak</option>
+                                    <option value="Ya">Ya, Masukkan ke Promo</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Link Sales Page</label>
+                                <input type="url" id="p-sales" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Link Checkout / Beli</label>
+                                <input type="url" id="p-checkout" required placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-submit-produk" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-lg flex justify-center items-center gap-2 text-lg">
+                            <span>🚀</span> Terbitkan Produk ke Database
+                        </button>
+                        <button type="button" id="btn-cancel-produk" onclick="cancelEdit('produk')" class="hidden w-full mt-3 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300 transition-all">Batalkan Edit</button>
+                    </form>
+
+                    <div class="mt-12 border-t border-gray-100 pt-8">
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                            <h3 class="text-lg font-bold text-gray-900">Daftar Produk Saat Ini</h3>
+                            <input type="text" oninput="handleSearch('produk', this.value)" placeholder="🔍 Cari nama produk..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-gray-200">
+                            <table class="w-full text-left text-sm text-gray-500">
+                                <thead class="bg-gray-50 text-gray-700 uppercase text-xs">
+                                    <tr>
+                                        <th class="px-4 py-3 border-b">Judul</th>
+                                        <th class="px-4 py-3 border-b">Kategori</th>
+                                        <th class="px-4 py-3 border-b">Harga</th>
+                                        <th class="px-4 py-3 border-b text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-produk-body" class="bg-white">
+                                    <!-- List Produk di-inject via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Container Pagination -->
+                        <div id="pagination-produk" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-artikel" class="tab-content hidden fade-in">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                    <h2 class="text-2xl font-bold mb-8 text-gray-900 flex items-center gap-3" id="title-form-artikel">
+                        <div class="bg-purple-100 p-2 rounded-lg text-purple-600">📝</div> Tulis Artikel Baru
+                    </h2>
+                    <form id="form-artikel" onsubmit="event.preventDefault(); submitData('artikel');">
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Judul Artikel</label>
+                            <input type="text" id="a-judul" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">URL Gambar Thumbnail (Opsional)</label>
+                            <input type="url" id="a-gambar" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-gray-50 focus:bg-white transition-colors">
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Ringkasan Singkat (Tampil di Card Depan)</label>
+                            <textarea id="a-ringkasan" required rows="2" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-gray-50 focus:bg-white transition-colors"></textarea>
+                        </div>
+
+                        <div class="mb-8">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Isi Artikel Lengkap</label>
+                            <div id="editor-container" class="bg-white"></div>
+                        </div>
+
+                        <button type="submit" id="btn-submit-artikel" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 active:scale-[0.98] transition-all shadow-lg flex justify-center items-center gap-2 text-lg">
+                            <span>📢</span> Terbitkan Artikel ke Database
+                        </button>
+                        <button type="button" id="btn-cancel-artikel" onclick="cancelEdit('artikel')" class="hidden w-full mt-3 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300 transition-all">Batalkan Edit</button>
+                    </form>
+
+                    <div class="mt-12 border-t border-gray-100 pt-8">
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                            <h3 class="text-lg font-bold text-gray-900">Daftar Artikel Saat Ini</h3>
+                            <input type="text" oninput="handleSearch('artikel', this.value)" placeholder="🔍 Cari judul artikel..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-colors">
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-gray-200">
+                            <table class="w-full text-left text-sm text-gray-500">
+                                <thead class="bg-gray-50 text-gray-700 uppercase text-xs">
+                                    <tr>
+                                        <th class="px-4 py-3 border-b">Judul Artikel</th>
+                                        <th class="px-4 py-3 border-b">Tanggal</th>
+                                        <th class="px-4 py-3 border-b text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-artikel-body" class="bg-white">
+                                    <!-- List Artikel di-inject via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Container Pagination -->
+                        <div id="pagination-artikel" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-import" class="tab-content hidden fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex flex-col items-center text-center">
+                        <div class="bg-emerald-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+                            <span class="text-3xl">📥</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Backup / Export Excel</h3>
+                        <p class="text-gray-500 mb-8 flex-grow">Unduh seluruh data produk Anda ke dalam format file Excel (.xlsx) murni untuk dicadangkan.</p>
+                        
+                        <button onclick="fetchExportData()" id="btn-export" class="w-full bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-bold py-4 rounded-xl transition-colors text-lg">
+                            Download Data (.xlsx)
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex flex-col items-center text-center">
+                        <div class="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+                            <span class="text-3xl">📤</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Import Produk Massal</h3>
+                        <p class="text-gray-500 mb-6 flex-grow">Punya puluhan link affiliate? Import sekaligus menggunakan file template Excel kami.</p>
+                        
+                        <div class="space-y-4 w-full">
+                            <button onclick="downloadTemplate()" class="w-full text-blue-600 font-bold text-sm hover:underline flex justify-center items-center gap-2 py-2">
+                                <span>📄</span> Unduh Template Excel Kosong
+                            </button>
+                            
+                            <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-2xl p-6 text-center hover:bg-gray-100 hover:border-blue-400 transition-all cursor-pointer relative group">
+                                <input type="file" id="file-import" accept=".xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                <svg class="w-8 h-8 text-gray-400 mx-auto mb-2 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <span class="text-sm text-gray-600 font-medium group-hover:text-blue-600 transition-colors">Klik untuk pilih file .xlsx</span>
+                            </div>
+
+                            <button onclick="importExcel()" id="btn-import" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-lg text-lg">
+                                🚀 Mulai Import Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl opacity-0 translate-y-6 pointer-events-none z-[100] text-sm font-bold flex items-center gap-3 transition-all duration-300">
+        <span id="toast-msg">Notifikasi</span>
+    </div>
+
+    <!-- Script Tambahan Quill.js -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+    <script>
+        /* STREAMING_CHUNK:Inisialisasi variabel global dan script URL */
+        // MASUKKAN URL APP SCRIPT ANDA DI SINI!
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHTo-K-CP3tvdRs6KkATa7bPhC5iMjQvKAHE7uea1HWu_P5OoKX0WAtrRiRXAJlAww/exec';
+        
+        let quill; // Variabel global untuk Quill
+        let adminData = { products: [], articles: [] }; 
+        let editState = { type: null, rowIndex: null }; 
+
+        // State untuk Pagination & Pencarian
+        let searchProduk = '';
+        let pageProduk = 1;
+        const limitProduk = 10; // Jumlah produk per halaman
+
+        let searchArtikel = '';
+        let pageArtikel = 1;
+        const limitArtikel = 10; // Jumlah artikel per halaman
+
+        /* STREAMING_CHUNK:Logika Dinamis Sosial Media Builder */
+        // ========================================================
+        // FUNGSI BUILDER SOSIAL MEDIA DINAMIS
+        // ========================================================
+        let sosmedDataList = [];
+
+        function renderSosmedBuilder() {
+            const container = document.getElementById('sosmed-list-container');
+            if(sosmedDataList.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Belum ada sosial media yang ditambahkan.</p>';
+                return;
+            }
+            container.innerHTML = sosmedDataList.map((s, index) => `
+                <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <span class="font-bold text-sm text-indigo-600 w-24 flex-shrink-0">${s.platform}</span>
+                        <a href="${s.url}" target="_blank" class="text-xs text-gray-500 truncate hover:text-indigo-500 max-w-[150px] md:max-w-xs">${s.url}</a>
+                    </div>
+                    <button type="button" onclick="removeSosmed(${index})" class="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition ml-2 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function addSosmed() {
+            const platform = document.getElementById('sosmed-platform').value;
+            const url = document.getElementById('sosmed-url').value;
+            
+            if(!url) { showMessage('⚠️ URL Sosmed wajib diisi!', true); return; }
+            
+            sosmedDataList.push({ platform: platform, url: url });
+            document.getElementById('sosmed-url').value = '';
+            renderSosmedBuilder();
+        }
+
+        function removeSosmed(index) {
+            sosmedDataList.splice(index, 1);
+            renderSosmedBuilder();
+        }
+        // ========================================================
+
+        /* STREAMING_CHUNK:Konfigurasi Event Listener */
+        // Setup Event Listener Gradient Helper
+        function bindGradientColor(inputColor1, inputColor2, inputText) {
+            if (inputColor1 && inputColor2 && inputText) {
+                inputColor1.addEventListener('input', function() {
+                    const vals = inputText.value.split(',').map(v => v.trim());
+                    if(vals.length > 1 && vals[1] !== '') {
+                        inputText.value = `${inputColor1.value.toUpperCase()}, ${vals[1]}`;
+                    } else {
+                        inputText.value = inputColor1.value.toUpperCase();
+                    }
+                });
+                inputColor2.addEventListener('input', function() {
+                    const vals = inputText.value.split(',').map(v => v.trim());
+                    const firstColor = (vals[0] && vals[0] !== '') ? vals[0] : inputColor1.value.toUpperCase();
+                    inputText.value = `${firstColor}, ${inputColor2.value.toUpperCase()}`;
+                });
+                inputText.addEventListener('input', function(e) {
+                    const vals = e.target.value.split(',').map(v => v.trim());
+                    if(vals[0] && /^#[0-9A-F]{6}$/i.test(vals[0])) inputColor1.value = vals[0];
+                    if(vals[1] && /^#[0-9A-F]{6}$/i.test(vals[1])) inputColor2.value = vals[1];
+                });
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            
+            // Bind semua input color gradient
+            bindGradientColor(document.getElementById('set-warnaColor1'), document.getElementById('set-warnaColor2'), document.getElementById('set-warnaUtama'));
+            bindGradientColor(document.getElementById('set-bgWarnaColor1'), document.getElementById('set-bgWarnaColor2'), document.getElementById('set-warnaBackground'));
+            bindGradientColor(document.getElementById('set-footerWarnaColor1'), document.getElementById('set-footerWarnaColor2'), document.getElementById('set-warnaFooter'));
+
+            // 1. Cek status login
+            if(localStorage.getItem('adminLoggedIn') === 'true') {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                document.getElementById('dashboard-section').classList.add('fade-in');
+                fetchAndRenderTables();
+            }
+
+            /* STREAMING_CHUNK:Fetch data Settings untuk diisi ke Form Admin */
+            // 2. Fetch Info dari Google Sheets (Otomatis)
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                
+                if (data.settings) {
+                    if (data.settings.logoUrl) {
+                        const logoImg = document.getElementById('login-logo-img');
+                        const logoSvg = document.getElementById('login-logo-svg');
+                        const logoContainer = document.getElementById('login-logo-container');
+                        
+                        logoImg.src = data.settings.logoUrl;
+                        logoImg.classList.remove('hidden');
+                        logoSvg.classList.add('hidden');
+                        logoContainer.classList.remove('bg-indigo-100', 'shadow-inner'); 
+                    }
+                    if (data.settings.namaToko) {
+                        const tempDiv = document.createElement("div");
+                        tempDiv.innerHTML = data.settings.namaToko;
+                        const cleanBrandName = tempDiv.textContent || tempDiv.innerText || "Toko";
+                        document.title = `Admin Dashboard - ${cleanBrandName}`;
+
+                        document.getElementById('login-title').innerText = "Admin Setup";
+                        if(document.getElementById('set-namaToko')) document.getElementById('set-namaToko').value = data.settings.namaToko;
+                    }
+
+                    // Isi form text biasa (termasuk variabel baru)
+                    if(document.getElementById('set-logoUrl')) document.getElementById('set-logoUrl').value = data.settings.logoUrl || '';
+                    if(document.getElementById('set-fontFamily')) document.getElementById('set-fontFamily').value = data.settings.fontFamily || 'Inter';
+                    if(document.getElementById('set-heroFontSize')) document.getElementById('set-heroFontSize').value = data.settings.heroFontSize || '';
+                    if(document.getElementById('set-heroTitle')) document.getElementById('set-heroTitle').value = data.settings.heroTitle || '';
+                    if(document.getElementById('set-heroSubtitle')) document.getElementById('set-heroSubtitle').value = data.settings.heroSubtitle || '';
+                    if(document.getElementById('set-heroBgImage')) document.getElementById('set-heroBgImage').value = data.settings.heroBgImage || '';
+                    if(document.getElementById('set-heroBgEffect')) document.getElementById('set-heroBgEffect').value = data.settings.heroBgEffect || 'Ya';
+                    
+                    // STREAMING_CHUNK:Mengisi form button text di Admin
+                    if(document.getElementById('set-btnCheckoutText')) document.getElementById('set-btnCheckoutText').value = data.settings.btnCheckoutText || '⚡ Checkout Kilat';
+                    if(document.getElementById('set-btnSalesText')) document.getElementById('set-btnSalesText').value = data.settings.btnSalesText || '📖 Lihat Sales Page';
+
+                    if(document.getElementById('set-bannerImage')) document.getElementById('set-bannerImage').value = data.settings.bannerImage || '';
+                    if(document.getElementById('set-bannerUrl')) document.getElementById('set-bannerUrl').value = data.settings.bannerUrl || '';
+                    if(document.getElementById('set-bottomBannerImage')) document.getElementById('set-bottomBannerImage').value = data.settings.bottomBannerImage || '';
+                    if(document.getElementById('set-bottomBannerUrl')) document.getElementById('set-bottomBannerUrl').value = data.settings.bottomBannerUrl || '';
+                    
+                    if(document.getElementById('set-waNumber')) document.getElementById('set-waNumber').value = data.settings.waNumber || '';
+                    if(document.getElementById('set-footerDeskripsi')) document.getElementById('set-footerDeskripsi').value = data.settings.footerDeskripsi || '';
+                    if(document.getElementById('set-linkSyarat')) document.getElementById('set-linkSyarat').value = data.settings.linkSyarat || '';
+                    if(document.getElementById('set-linkPrivasi')) document.getElementById('set-linkPrivasi').value = data.settings.linkPrivasi || '';
+                    if(document.getElementById('set-linkDisclaimer')) document.getElementById('set-linkDisclaimer').value = data.settings.linkDisclaimer || '';
+                    
+                    // Inisialisasi data Sosmed dinamis dari backend
+                    if(data.settings.sosmedList) {
+                        try {
+                            sosmedDataList = JSON.parse(data.settings.sosmedList);
+                        } catch(e) {
+                            sosmedDataList = [];
+                        }
+                    } else {
+                        sosmedDataList = [];
+                    }
+                    renderSosmedBuilder();
+
+                    // Helper isi color picker
+                    function fillColors(textId, c1Id, c2Id, defaultColor) {
+                        if(document.getElementById(textId)) {
+                            const w = data.settings[textId.replace('set-', '')] || defaultColor;
+                            document.getElementById(textId).value = w;
+                            const vals = w.split(',').map(v => v.trim());
+                            if(vals[0] && /^#[0-9A-F]{6}$/i.test(vals[0])) document.getElementById(c1Id).value = vals[0];
+                            if(vals[1] && /^#[0-9A-F]{6}$/i.test(vals[1])) document.getElementById(c2Id).value = vals[1];
+                        }
+                    }
+
+                    fillColors('set-warnaUtama', 'set-warnaColor1', 'set-warnaColor2', '#4F46E5');
+                    fillColors('set-warnaBackground', 'set-bgWarnaColor1', 'set-bgWarnaColor2', '#F9FAFB');
+                    fillColors('set-warnaFooter', 'set-footerWarnaColor1', 'set-footerWarnaColor2', '#111827');
+                }
+            } catch (error) {
+                console.log("Gagal memuat info server: ", error);
+            }
+
+            // 3. Inisialisasi Quill Editor untuk Artikel
+            if(document.getElementById('editor-container')) {
+                quill = new Quill('#editor-container', {
+                    theme: 'snow',
+                    placeholder: 'Ketik isi artikel yang panjang di sini, Anda bisa memasukkan hyperlink, list, dan teks tebal...',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline', 'strike'],        
+                            ['blockquote', 'code-block'],
+                            [{ 'header': 1 }, { 'header': 2 }],                
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],     
+                            [{ 'color': [] }, { 'background': [] }],          
+                            ['link'],                                         
+                            ['clean']                                         
+                        ]
+                    }
+                });
+            }
+        });
+
+        /* STREAMING_CHUNK:Logika Fungsi Login dan Tab Dashboard */
+        // ------------------------- FUNGSI LOGIN & TAB -------------------------
+
+        async function checkLogin() {
+            const pin = document.getElementById('pin-input').value;
+            const btn = document.getElementById('btn-login');
+            
+            if(!pin) { showMessage('⚠️ Masukkan PIN!', true); return; }
+            
+            btn.innerHTML = '<span class="animate-pulse">Memeriksa... ⏳</span>';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(SCRIPT_URL);
+                
+                const textCheck = await response.clone().text();
+                if(textCheck.includes("<!DOCTYPE html>")) {
+                    showMessage('❌ Gagal: Cek pengaturan Deploy App Script (Who has access: Anyone)', true);
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if(data.settings && data.settings.adminPin === pin) {
+                    localStorage.setItem('adminLoggedIn', 'true');
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('dashboard-section').classList.remove('hidden');
+                    document.getElementById('dashboard-section').classList.add('fade-in');
+                    showMessage('✅ Berhasil Login!');
+                    fetchAndRenderTables();
+                } else {
+                    showMessage('❌ PIN Salah! Silakan cek di Google Sheets tab Settings.', true);
+                }
+            } catch (error) {
+                showMessage('❌ Gagal terhubung ke server.', true);
+                console.error(error);
+            } finally {
+                btn.innerHTML = 'Masuk Dashboard';
+                btn.disabled = false;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminLoggedIn');
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('login-section').classList.add('fade-in');
+            document.getElementById('dashboard-section').classList.add('hidden');
+            document.getElementById('pin-input').value = '';
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('fade-in');
+            });
+            const selectedTab = document.getElementById(tabId);
+            selectedTab.classList.remove('hidden');
+            setTimeout(() => selectedTab.classList.add('fade-in'), 10);
+            
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+
+        function showMessage(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerHTML = msg;
+            
+            if(isError) {
+                toast.classList.replace('bg-gray-900', 'bg-red-500');
+            } else {
+                toast.classList.replace('bg-red-500', 'bg-gray-900');
+            }
+
+            toast.classList.remove('opacity-0', 'translate-y-6');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-6');
+            }, 3000);
+        }
+
+        /* STREAMING_CHUNK:Logika Fetch dan Render Tabel CRUD */
+        // ------------------------- FUNGSI FETCH & RENDER TABEL CRUD -------------------------
+
+        async function fetchAndRenderTables() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                adminData = data; 
+                renderAdminLists();
+            } catch(e) {
+                console.log("Gagal memuat list tabel", e);
+            }
+        }
+
+        function handleSearch(type, value) {
+            if (type === 'produk') { searchProduk = value.toLowerCase(); pageProduk = 1; } 
+            else if (type === 'artikel') { searchArtikel = value.toLowerCase(); pageArtikel = 1; }
+            renderAdminLists();
+        }
+
+        function setPage(type, pageNum) {
+            if (type === 'produk') pageProduk = pageNum;
+            else if (type === 'artikel') pageArtikel = pageNum;
+            renderAdminLists();
+        }
+
+        function createPaginationHTML(totalItems, limit, currentPage, type) {
+            const totalPages = Math.ceil(totalItems / limit);
+            if (totalPages <= 1) return '';
+
+            let html = '<div class="flex gap-2 justify-end mt-4">';
+            for (let i = 1; i <= totalPages; i++) {
+                const activeClass = i === currentPage 
+                    ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow' 
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50';
+                html += `<button type="button" onclick="setPage('${type}', ${i})" class="px-3 py-1 text-sm border rounded-md transition-all ${activeClass}">${i}</button>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function renderAdminLists() {
+            // Render Tabel Produk
+            const tBodyProduk = document.getElementById('table-produk-body');
+            const containerPaginProduk = document.getElementById('pagination-produk');
+            
+            if (tBodyProduk && adminData.products) {
+                let filteredProduk = adminData.products.map((p, index) => ({ ...p, realIndex: index }));
+                if (searchProduk !== '') {
+                    filteredProduk = filteredProduk.filter(p => 
+                        (p.judul && p.judul.toLowerCase().includes(searchProduk)) || 
+                        (p.kategori && p.kategori.toLowerCase().includes(searchProduk))
+                    );
+                }
+
+                const totalP = filteredProduk.length;
+                const totalPagesP = Math.ceil(totalP / limitProduk);
+                if (pageProduk > totalPagesP && totalPagesP > 0) pageProduk = totalPagesP;
+                
+                const startP = (pageProduk - 1) * limitProduk;
+                const paginatedProduk = filteredProduk.slice(startP, startP + limitProduk);
+
+                if (paginatedProduk.length === 0) {
+                    tBodyProduk.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">Tidak ada produk.</td></tr>`;
+                    containerPaginProduk.innerHTML = '';
+                } else {
+                    tBodyProduk.innerHTML = paginatedProduk.map(p => `
+                        <tr class="border-b hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-3 font-medium text-gray-900">${p.judul}</td>
+                            <td class="px-4 py-3">${p.kategori || '-'}</td>
+                            <td class="px-4 py-3 text-indigo-600 font-semibold">${p.harga}</td>
+                            <td class="px-4 py-3 text-right space-x-3 whitespace-nowrap">
+                                <button type="button" onclick="startEdit('produk', ${p.realIndex})" class="text-blue-500 hover:text-blue-700 font-bold transition-colors">Edit</button>
+                                <button type="button" onclick="deleteData('produk', ${p.realIndex})" class="text-red-500 hover:text-red-700 font-bold transition-colors">Hapus</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                    containerPaginProduk.innerHTML = createPaginationHTML(totalP, limitProduk, pageProduk, 'produk');
+                }
+            }
+
+            // Render Tabel Artikel
+            const tBodyArtikel = document.getElementById('table-artikel-body');
+            const containerPaginArtikel = document.getElementById('pagination-artikel');
+
+            if (tBodyArtikel && adminData.articles) {
+                let filteredArtikel = adminData.articles.map((a, index) => ({ ...a, realIndex: index }));
+                if (searchArtikel !== '') {
+                    filteredArtikel = filteredArtikel.filter(a => 
+                        a.judul && a.judul.toLowerCase().includes(searchArtikel)
+                    );
+                }
+
+                const totalA = filteredArtikel.length;
+                const totalPagesA = Math.ceil(totalA / limitArtikel);
+                if (pageArtikel > totalPagesA && totalPagesA > 0) pageArtikel = totalPagesA;
+                
+                const startA = (pageArtikel - 1) * limitArtikel;
+                const paginatedArtikel = filteredArtikel.slice(startA, startA + limitArtikel);
+
+                if (paginatedArtikel.length === 0) {
+                    tBodyArtikel.innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-gray-400">Tidak ada artikel.</td></tr>`;
+                    containerPaginArtikel.innerHTML = '';
+                } else {
+                    tBodyArtikel.innerHTML = paginatedArtikel.map(a => `
+                        <tr class="border-b hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-3 font-medium text-gray-900">${a.judul}</td>
+                            <td class="px-4 py-3">${a.tanggal || '-'}</td>
+                            <td class="px-4 py-3 text-right space-x-3 whitespace-nowrap">
+                                <button type="button" onclick="startEdit('artikel', ${a.realIndex})" class="text-blue-500 hover:text-blue-700 font-bold transition-colors">Edit</button>
+                                <button type="button" onclick="deleteData('artikel', ${a.realIndex})" class="text-red-500 hover:text-red-700 font-bold transition-colors">Hapus</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                    containerPaginArtikel.innerHTML = createPaginationHTML(totalA, limitArtikel, pageArtikel, 'artikel');
+                }
+            }
+        }
+
+        /* STREAMING_CHUNK:Fungsi Edit dan Hapus Data */
+        // ------------------------- FUNGSI EDIT & HAPUS -------------------------
+
+        function startEdit(type, index) {
+            editState = { type: type, rowIndex: index + 2 }; 
+            
+            if (type === 'produk') {
+                const p = adminData.products[index];
+                document.getElementById('p-judul').value = p.judul;
+                document.getElementById('p-kategori').value = p.kategori;
+                document.getElementById('p-gambar').value = p.gambar;
+                document.getElementById('p-deskripsi').value = p.deskripsi;
+                document.getElementById('p-harga').value = p.harga;
+                document.getElementById('p-promo').value = p.promo;
+                document.getElementById('p-sales').value = p.linkSales;
+                document.getElementById('p-checkout').value = p.linkCheckout;
+                
+                document.getElementById('title-form-produk').innerHTML = '<div class="bg-blue-100 p-2 rounded-lg text-blue-600">✏️</div> Update Produk Ini';
+                const btn = document.getElementById('btn-submit-produk');
+                btn.innerHTML = '<span>💾</span> Simpan Perubahan Produk';
+                btn.classList.replace('bg-indigo-600', 'bg-blue-600');
+                btn.classList.replace('hover:bg-indigo-700', 'hover:bg-blue-700');
+                document.getElementById('btn-cancel-produk').classList.remove('hidden');
+                
+                document.getElementById('form-produk').scrollIntoView({ behavior: 'smooth', block: 'end' });
+            } else if (type === 'artikel') {
+                const a = adminData.articles[index];
+                document.getElementById('a-judul').value = a.judul;
+                document.getElementById('a-gambar').value = a.gambar;
+                document.getElementById('a-ringkasan').value = a.ringkasan;
+                
+                let contentText = a.isiLengkap || a.ringkasan || "";
+                quill.clipboard.dangerouslyPasteHTML(contentText);
+                
+                document.getElementById('title-form-artikel').innerHTML = '<div class="bg-blue-100 p-2 rounded-lg text-blue-600">✏️</div> Update Artikel Ini';
+                const btn = document.getElementById('btn-submit-artikel');
+                btn.innerHTML = '<span>💾</span> Simpan Perubahan Artikel';
+                btn.classList.replace('bg-purple-600', 'bg-blue-600');
+                btn.classList.replace('hover:bg-purple-700', 'hover:bg-blue-700');
+                document.getElementById('btn-cancel-artikel').classList.remove('hidden');
+                
+                document.getElementById('form-artikel').scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+        }
+
+        function cancelEdit(type) {
+            editState = { type: null, rowIndex: null };
+            document.getElementById(`form-${type}`).reset();
+            
+            if (type === 'produk') {
+                document.getElementById('title-form-produk').innerHTML = '<div class="bg-indigo-100 p-2 rounded-lg text-indigo-600">➕</div> Upload Produk Baru';
+                const btn = document.getElementById('btn-submit-produk');
+                btn.innerHTML = '<span>🚀</span> Terbitkan Produk ke Database';
+                btn.classList.replace('bg-blue-600', 'bg-indigo-600');
+                btn.classList.replace('hover:bg-blue-700', 'hover:bg-indigo-700');
+                document.getElementById('btn-cancel-produk').classList.add('hidden');
+            } else if (type === 'artikel') {
+                quill.setContents([]);
+                document.getElementById('title-form-artikel').innerHTML = '<div class="bg-purple-100 p-2 rounded-lg text-purple-600">📝</div> Tulis Artikel Baru';
+                const btn = document.getElementById('btn-submit-artikel');
+                btn.innerHTML = '<span>📢</span> Terbitkan Artikel ke Database';
+                btn.classList.replace('bg-blue-600', 'bg-purple-600');
+                btn.classList.replace('hover:bg-blue-700', 'hover:bg-purple-700');
+                document.getElementById('btn-cancel-artikel').classList.add('hidden');
+            }
+        }
+
+        async function deleteData(type, index) {
+            if(!confirm(`Yakin ingin menghapus ${type} ini selamanya?`)) return;
+            
+            let btnId = type === 'produk' ? 'btn-submit-produk' : 'btn-submit-artikel';
+            const btn = document.getElementById(btnId);
+            const oriText = btn.innerHTML;
+            btn.innerHTML = '<span class="animate-pulse">Menghapus... ⏳</span>';
+            btn.disabled = true;
+            
+            const payload = {
+                action: type === 'produk' ? 'hapus_produk' : 'hapus_artikel',
+                rowIndex: index + 2 // Index + 2 karena Baris 1 itu Header Google Sheets
+            };
+
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showMessage(`✅ ${type} berhasil dihapus!`);
+                    fetchAndRenderTables(); // Tarik data ulang biar tabel ke-update
+                } else {
+                    showMessage(`❌ Gagal: ${result.message}`, true);
+                }
+            } catch (error) {
+                showMessage('❌ Terjadi kesalahan jaringan.', true);
+            } finally {
+                cancelEdit(type);
+                btn.innerHTML = oriText;
+                btn.disabled = false;
+            }
+        }
+
+        /* STREAMING_CHUNK:Logika Menyimpan Data (Settings, Produk, Artikel) */
+        // ------------------------- FUNGSI SUBMIT (TAMBAH/UPDATE) -------------------------
+
+        async function submitData(type) {
+            let payload = { action: '', data: {} };
+            let btnId = '';
+            if (type === 'settings') btnId = 'btn-submit-settings';
+            else if (type === 'produk') btnId = 'btn-submit-produk';
+            else if (type === 'artikel') btnId = 'btn-submit-artikel';
+
+            const btn = document.getElementById(btnId);
+            const oriText = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="animate-pulse">Mengirim Data... ⏳</span>';
+            btn.disabled = true;
+
+            if (type === 'settings') {
+                payload.action = 'update_settings';
+                payload.data = {
+                    namaToko: document.getElementById('set-namaToko').value,
+                    logoUrl: document.getElementById('set-logoUrl').value,
+                    fontFamily: document.getElementById('set-fontFamily').value,
+                    warnaUtama: document.getElementById('set-warnaUtama').value,
+                    warnaBackground: document.getElementById('set-warnaBackground').value,
+                    heroTitle: document.getElementById('set-heroTitle').value,
+                    heroSubtitle: document.getElementById('set-heroSubtitle').value,
+                    heroFontSize: document.getElementById('set-heroFontSize').value,
+                    heroBgImage: document.getElementById('set-heroBgImage').value,
+                    heroBgEffect: document.getElementById('set-heroBgEffect').value,
+                    // STREAMING_CHUNK:Mengumpulkan payload button text dari form
+                    btnCheckoutText: document.getElementById('set-btnCheckoutText').value,
+                    btnSalesText: document.getElementById('set-btnSalesText').value,
+
+                    bannerImage: document.getElementById('set-bannerImage').value,
+                    bannerUrl: document.getElementById('set-bannerUrl').value,
+                    bottomBannerImage: document.getElementById('set-bottomBannerImage').value,
+                    bottomBannerUrl: document.getElementById('set-bottomBannerUrl').value,
+                    
+                    waNumber: document.getElementById('set-waNumber').value,
+                    warnaFooter: document.getElementById('set-warnaFooter').value,
+                    footerDeskripsi: document.getElementById('set-footerDeskripsi').value,
+                    sosmedList: JSON.stringify(sosmedDataList), // Mengirim array list sosmed sebagai JSON
+                    linkSyarat: document.getElementById('set-linkSyarat').value,
+                    linkPrivasi: document.getElementById('set-linkPrivasi').value,
+                    linkDisclaimer: document.getElementById('set-linkDisclaimer').value
+                };
+            } else if (type === 'produk') {
+                payload.action = editState.type === 'produk' ? 'edit_produk' : 'tambah_produk';
+                if(editState.rowIndex) payload.rowIndex = editState.rowIndex;
+
+                payload.data = {
+                    judul: document.getElementById('p-judul').value,
+                    deskripsi: document.getElementById('p-deskripsi').value,
+                    gambar: document.getElementById('p-gambar').value,
+                    harga: document.getElementById('p-harga').value,
+                    linkSales: document.getElementById('p-sales').value,
+                    linkCheckout: document.getElementById('p-checkout').value,
+                    kategori: document.getElementById('p-kategori').value,
+                    promo: document.getElementById('p-promo').value
+                };
+            } else if (type === 'artikel') {
+                const htmlContent = quill.root.innerHTML;
+                
+                if (quill.getText().trim().length === 0) {
+                    showMessage('❌ Isi artikel tidak boleh kosong!', true);
+                    btn.innerHTML = oriText;
+                    btn.disabled = false;
+                    return;
+                }
+                
+                payload.action = editState.type === 'artikel' ? 'edit_artikel' : 'tambah_artikel';
+                if(editState.rowIndex) payload.rowIndex = editState.rowIndex;
+
+                const today = new Date();
+                const options = { day: 'numeric', month: 'long', year: 'numeric' };
+                const tglIndo = today.toLocaleDateString('id-ID', options);
+
+                payload.data = {
+                    judul: document.getElementById('a-judul').value,
+                    ringkasan: document.getElementById('a-ringkasan').value,
+                    gambar: document.getElementById('a-gambar').value,
+                    tanggal: tglIndo,
+                    isiLengkap: htmlContent
+                };
+            }
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    let msg = type === 'settings' ? 'Pengaturan Web' : (type === 'produk' ? 'Produk' : 'Artikel');
+                    let actionWord = editState.type ? 'diupdate' : 'disimpan';
+                    if(type === 'settings') actionWord = 'disimpan';
+                    
+                    showMessage(`✅ ${msg} berhasil ${actionWord} ke database!`);
+                    
+                    if(type === 'settings') {
+                        localStorage.removeItem('marketplace_data_cache'); 
+                        setTimeout(() => window.location.reload(), 1500); 
+                    } else {
+                        cancelEdit(type);
+                        fetchAndRenderTables(); 
+                    }
+                } else {
+                    showMessage(`❌ Gagal: ${result.message}`, true);
+                }
+            } catch (error) {
+                showMessage('❌ Terjadi kesalahan koneksi.', true);
+                console.error(error);
+            } finally {
+                btn.innerHTML = oriText;
+                btn.disabled = false;
+            }
+        }
+
+        /* STREAMING_CHUNK:Logika Import/Export Excel */
+        // ------------------------- FUNGSI EXPORT / IMPORT -------------------------
+
+        async function fetchExportData() {
+            const btn = document.getElementById('btn-export');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="animate-pulse">Menyiapkan Excel... ⏳</span>';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                
+                if(!data.products || data.products.length === 0) {
+                    showMessage('⚠️ Belum ada produk di database.', true);
+                    return;
+                }
+
+                const exportData = [
+                    ["Judul", "Deskripsi", "URL_Gambar", "Harga", "Link_Sales_Page", "Link_Checkout", "Kategori", "Promo"]
+                ];
+                
+                data.products.forEach(p => {
+                    exportData.push([
+                        p.judul || '', p.deskripsi || '', p.gambar || '', 
+                        p.harga || '', p.linkSales || '', p.linkCheckout || '', 
+                        p.kategori || '', p.promo || ''
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Data_Produk");
+                XLSX.writeFile(wb, "Backup_Produk_AFFLINK.xlsx");
+                
+                showMessage('✅ Data berhasil diekspor menjadi .xlsx!');
+            } catch (error) {
+                showMessage('❌ Gagal mengekspor data.', true);
+                console.error(error);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function downloadTemplate() {
+            try {
+                const templateData = [
+                    ["Judul", "Deskripsi", "URL_Gambar", "Harga", "Link_Sales_Page", "Link_Checkout", "Kategori", "Promo"],
+                    ["Contoh Ebook A", "Deskripsi ebook...", "https://...", "Rp 150.000", "https://...", "https://...", "Ebook", "Ya"]
+                ];
+
+                const ws = XLSX.utils.aoa_to_sheet(templateData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Template_Produk");
+                
+                XLSX.writeFile(wb, "Template_Produk_AFFLINK.xlsx");
+                showMessage('✅ Template Excel berhasil diunduh!');
+            } catch (error) {
+                showMessage('❌ Gagal mengunduh template.', true);
+            }
+        }
+
+        async function importExcel() {
+            const fileInput = document.getElementById('file-import');
+            const file = fileInput.files[0];
+            
+            if (!file) { showMessage('❌ Silakan pilih file Excel (.xlsx)!', true); return; }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    if (jsonData.length <= 1) {
+                        showMessage('❌ File Excel kosong atau cuma berisi judul!', true);
+                        return;
+                    }
+
+                    const rowsToUpload = jsonData.slice(1);
+                    const btn = document.getElementById('btn-import');
+                    btn.innerHTML = '<span class="animate-pulse">Mengunggah ke Database... ⏳</span>';
+                    btn.disabled = true;
+
+                    const payload = {
+                        action: 'import_produk_csv', 
+                        data: rowsToUpload
+                    };
+
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        showMessage(`✅ ${rowsToUpload.length} Produk berhasil diimpor!`);
+                        fileInput.value = ''; 
+                        fetchAndRenderTables(); 
+                    } else {
+                        showMessage('❌ Gagal impor: ' + result.message, true);
+                    }
+                } catch (error) {
+                    showMessage('❌ Terjadi kesalahan saat membaca file.', true);
+                    console.error(error);
+                } finally {
+                    const btn = document.getElementById('btn-import');
+                    btn.innerHTML = '🚀 Mulai Import Data';
+                    btn.disabled = false;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
